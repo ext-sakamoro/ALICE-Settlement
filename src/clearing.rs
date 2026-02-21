@@ -92,11 +92,12 @@ impl ClearingHouse {
             return Err(ClearingError::AccountNotFound(obligation.receiver_id));
         }
 
+        // Balance check: deliverer existence was verified above.
         let deliverer_balance = self
             .accounts
             .get(&obligation.deliverer_id)
-            .map(|a| a.balance)
-            .unwrap();
+            .expect("deliverer account verified above")
+            .balance;
 
         if deliverer_balance < obligation.net_payment {
             return Err(ClearingError::InsufficientBalance {
@@ -106,15 +107,15 @@ impl ClearingHouse {
             });
         }
 
-        // Perform the transfer.
+        // Perform the transfer; both accounts were verified above.
         self.accounts
             .get_mut(&obligation.deliverer_id)
-            .unwrap()
+            .expect("deliverer account verified above")
             .balance -= obligation.net_payment;
 
         self.accounts
             .get_mut(&obligation.receiver_id)
-            .unwrap()
+            .expect("receiver account verified above")
             .balance += obligation.net_payment;
 
         Ok(())

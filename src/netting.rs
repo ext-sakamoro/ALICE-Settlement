@@ -3,7 +3,7 @@
     Copyright (C) 2026 Moroya Sakamoto
 */
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::trade::Trade;
 
