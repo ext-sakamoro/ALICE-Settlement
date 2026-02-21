@@ -1,0 +1,32 @@
+[package]
+name = "alice-settlement"
+version = "0.1.0"
+edition = "2021"
+authors = ["Moroya Sakamoto"]
+description = "Post-trade settlement, netting, and clearing engine"
+license = "AGPL-3.0-only"
+publish = false
+
+[lib]
+name = "alice_settlement"
+crate-type = ["rlib"]
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+alice-ledger = { path = "../ALICE-Ledger" }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.bench]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+debug = false
