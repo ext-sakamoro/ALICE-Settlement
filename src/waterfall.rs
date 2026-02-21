@@ -371,4 +371,108 @@ mod tests {
         assert_eq!(result.total_absorbed, 1);
         assert_eq!(result.layers[0].absorbed, 1);
     }
+
+    #[test]
+    fn waterfall_layer_repr_values() {
+        assert_eq!(WaterfallLayer::DefaulterMargin as u8, 0);
+        assert_eq!(WaterfallLayer::DefaulterFund as u8, 1);
+        assert_eq!(WaterfallLayer::CcpFirstLoss as u8, 2);
+        assert_eq!(WaterfallLayer::MembersFund as u8, 3);
+        assert_eq!(WaterfallLayer::CcpCapital as u8, 4);
+    }
+
+    #[test]
+    fn waterfall_layer_equality() {
+        assert_eq!(WaterfallLayer::DefaulterMargin, WaterfallLayer::DefaulterMargin);
+        assert_ne!(WaterfallLayer::DefaulterMargin, WaterfallLayer::CcpCapital);
+    }
+
+    #[test]
+    fn absorb_losses_empty_slice() {
+        let wf = default_waterfall();
+        let results = wf.absorb_losses(&[]);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn absorb_losses_all_zero() {
+        let wf = default_waterfall();
+        let results = wf.absorb_losses(&[0, 0, 0]);
+        assert_eq!(results.len(), 3);
+        for r in &results {
+            assert!(r.fully_covered);
+            assert_eq!(r.total_absorbed, 0);
+            assert_eq!(r.shortfall, 0);
+        }
+    }
+
+    #[test]
+    fn content_hash_differs_for_different_losses() {
+        let wf = default_waterfall();
+        let r1 = wf.absorb_loss(100);
+        let r2 = wf.absorb_loss(101);
+        assert_ne!(r1.content_hash, r2.content_hash);
+    }
+
+    #[test]
+    fn total_capacity_default_config() {
+        let wf = default_waterfall();
+        // defaulter_margin=10000, fund=5000, ccp=2000, members=20000, ccp_cap=50000
+        assert_eq!(wf.total_capacity(), 87_000);
+    }
+
+    #[test]
+    fn config_accessor_returns_original_values() {
+        let cfg = WaterfallConfig {
+            defaulter_margin: 111,
+            defaulter_fund: 222,
+            ccp_first_loss: 333,
+            members_fund: 444,
+            ccp_capital: 555,
+        };
+        let wf = DefaultWaterfall::new(cfg.clone());
+        let got = wf.config();
+        assert_eq!(got.defaulter_margin, 111);
+        assert_eq!(got.defaulter_fund, 222);
+        assert_eq!(got.ccp_first_loss, 333);
+        assert_eq!(got.members_fund, 444);
+        assert_eq!(got.ccp_capital, 555);
+    }
+
+    #[test]
+    fn layer_remaining_after_decreases_monotonically() {
+        let wf = small_waterfall();
+        let result = wf.absorb_loss(700); // spans several layers
+        let mut prev = result.total_loss;
+        for layer in &result.layers {
+            assert!(layer.remaining_after <= prev);
+            prev = layer.remaining_after;
+        }
+    }
+
+    #[test]
+    fn zero_capacity_waterfall_shortfall_equals_loss() {
+        let wf = DefaultWaterfall::new(WaterfallConfig {
+            defaulter_margin: 0,
+            defaulter_fund: 0,
+            ccp_first_loss: 0,
+            members_fund: 0,
+            ccp_capital: 0,
+        });
+        let result = wf.absorb_loss(9_999);
+        assert!(!result.fully_covered);
+        assert_eq!(result.shortfall, 9_999);
+        assert_eq!(result.total_absorbed, 0);
+    }
+
+    #[test]
+    fn absorb_loss_all_layers_have_correct_capacity_field() {
+        let wf = small_waterfall();
+        let result = wf.absorb_loss(1);
+        assert_eq!(result.layers[0].capacity, 100);
+        assert_eq!(result.layers[1].capacity, 50);
+        assert_eq!(result.layers[2].capacity, 30);
+        assert_eq!(result.layers[3].capacity, 200);
+        assert_eq!(result.layers[4].capacity, 500);
+    }
 }

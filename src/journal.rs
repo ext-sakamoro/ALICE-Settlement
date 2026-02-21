@@ -191,4 +191,68 @@ mod tests {
         assert_eq!(last.sequence, 3);
         assert_eq!(last.timestamp_ns, 300);
     }
+
+    #[test]
+    fn test_journal_default_equals_new() {
+        let j1 = SettlementJournal::new();
+        let j2 = SettlementJournal::default();
+        assert_eq!(j1.len(), j2.len());
+        assert!(j1.is_empty() && j2.is_empty());
+    }
+
+    #[test]
+    fn test_journal_all_event_variants() {
+        let mut journal = SettlementJournal::new();
+        journal.record(1, JournalEvent::TradeReceived { trade_id: 1 });
+        journal.record(2, JournalEvent::NettingCompleted { obligation_count: 5 });
+        journal.record(
+            3,
+            JournalEvent::ClearingAttempted {
+                obligation_count: 5,
+                success_count: 4,
+                fail_count: 1,
+            },
+        );
+        journal.record(4, JournalEvent::SettlementCompleted { trade_count: 10 });
+        journal.record(
+            5,
+            JournalEvent::SettlementFailed {
+                trade_id: 42,
+                reason: "no funds".to_string(),
+            },
+        );
+        assert_eq!(journal.len(), 5);
+        // Sequences must be 1-based and contiguous.
+        for (i, entry) in journal.entries().iter().enumerate() {
+            assert_eq!(entry.sequence, (i as u64) + 1);
+        }
+    }
+
+    #[test]
+    fn test_journal_entries_slice_matches_len() {
+        let mut journal = SettlementJournal::new();
+        for i in 0..7u64 {
+            journal.record(i, JournalEvent::TradeReceived { trade_id: i });
+        }
+        assert_eq!(journal.entries().len(), journal.len());
+    }
+
+    #[test]
+    fn test_journal_timestamp_preserved() {
+        let mut journal = SettlementJournal::new();
+        let ts: u64 = 1_700_000_000_123_456_789;
+        journal.record(ts, JournalEvent::TradeReceived { trade_id: 7 });
+        assert_eq!(journal.entries()[0].timestamp_ns, ts);
+    }
+
+    #[test]
+    fn test_journal_large_sequence() {
+        let mut journal = SettlementJournal::new();
+        for i in 0..1000u64 {
+            journal.record(i, JournalEvent::TradeReceived { trade_id: i });
+        }
+        assert_eq!(journal.len(), 1000);
+        let last = journal.last_entry().unwrap();
+        assert_eq!(last.sequence, 1000);
+    }
 }

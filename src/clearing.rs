@@ -93,11 +93,11 @@ impl ClearingHouse {
         }
 
         // Balance check: deliverer existence was verified above.
-        let deliverer_balance = self
-            .accounts
-            .get(&obligation.deliverer_id)
-            .expect("deliverer account verified above")
-            .balance;
+        let deliverer_balance = if let Some(acc) = self.accounts.get(&obligation.deliverer_id) {
+            acc.balance
+        } else {
+            return Err(ClearingError::AccountNotFound(obligation.deliverer_id));
+        };
 
         if deliverer_balance < obligation.net_payment {
             return Err(ClearingError::InsufficientBalance {
@@ -108,15 +108,13 @@ impl ClearingHouse {
         }
 
         // Perform the transfer; both accounts were verified above.
-        self.accounts
-            .get_mut(&obligation.deliverer_id)
-            .expect("deliverer account verified above")
-            .balance -= obligation.net_payment;
+        if let Some(acc) = self.accounts.get_mut(&obligation.deliverer_id) {
+            acc.balance -= obligation.net_payment;
+        }
 
-        self.accounts
-            .get_mut(&obligation.receiver_id)
-            .expect("receiver account verified above")
-            .balance += obligation.net_payment;
+        if let Some(acc) = self.accounts.get_mut(&obligation.receiver_id) {
+            acc.balance += obligation.net_payment;
+        }
 
         Ok(())
     }
@@ -267,5 +265,110 @@ mod tests {
         assert_eq!(ch.get_account(100).unwrap().balance, 47_000); // 50000 - 2000 - 1000
         assert_eq!(ch.get_account(200).unwrap().balance, 1_500); // 500 + 1000 (received from ob3)
         assert_eq!(ch.get_account(300).unwrap().balance, 22_000); // 20000 + 2000 (ob1)
+    }
+
+    #[test]
+    fn test_register_account_replaces_balance() {
+        let mut ch = ClearingHouse::new();
+        ch.register_account(1, 1_000);
+        ch.register_account(1, 9_999); // overwrite
+        let acc = ch.get_account(1).unwrap();
+        assert_eq!(acc.balance, 9_999);
+        assert_eq!(acc.margin_held, 0);
+    }
+
+    #[test]
+    fn test_clear_zero_payment() {
+        // A zero-payment obligation should succeed and leave balances unchanged.
+        let mut ch = ClearingHouse::new();
+        ch.register_account(1, 500);
+        ch.register_account(2, 500);
+        let ob = make_obligation(0x01, 1, 2, 0, 0);
+        assert!(ch.clear_obligation(&ob).is_ok());
+        assert_eq!(ch.get_account(1).unwrap().balance, 500);
+        assert_eq!(ch.get_account(2).unwrap().balance, 500);
+    }
+
+    #[test]
+    fn test_clear_deliverer_unknown() {
+        // Only deliverer is missing — error must reference deliverer.
+        let mut ch = ClearingHouse::new();
+        ch.register_account(200, 10_000);
+        let ob = make_obligation(0xAA, 999, 200, 1, 100);
+        match ch.clear_obligation(&ob) {
+            Err(ClearingError::AccountNotFound(id)) => assert_eq!(id, 999),
+            other => panic!("expected AccountNotFound(999), got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_clear_receiver_unknown() {
+        // Deliverer exists, receiver is missing.
+        let mut ch = ClearingHouse::new();
+        ch.register_account(100, 10_000);
+        let ob = make_obligation(0xBB, 100, 888, 1, 100);
+        match ch.clear_obligation(&ob) {
+            Err(ClearingError::AccountNotFound(id)) => assert_eq!(id, 888),
+            other => panic!("expected AccountNotFound(888), got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_clear_all_empty_obligations() {
+        let mut ch = ClearingHouse::new();
+        let results = ch.clear_all(&[]);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_clearing_error_eq() {
+        let e1 = ClearingError::AccountNotFound(42);
+        let e2 = ClearingError::AccountNotFound(42);
+        assert_eq!(e1, e2);
+
+        let e3 = ClearingError::InsufficientBalance {
+            account_id: 1,
+            required: 100,
+            available: 50,
+        };
+        let e4 = ClearingError::InsufficientBalance {
+            account_id: 1,
+            required: 100,
+            available: 50,
+        };
+        assert_eq!(e3, e4);
+        assert_ne!(e1, e3);
+    }
+
+    #[test]
+    fn test_default_clearing_house() {
+        let ch = ClearingHouse::default();
+        assert!(ch.get_account(0).is_none());
+    }
+
+    #[test]
+    fn test_sequential_clear_same_pair() {
+        // Two consecutive obligations between the same pair — balances accumulate.
+        let mut ch = ClearingHouse::new();
+        ch.register_account(1, 100_000);
+        ch.register_account(2, 0);
+        let ob1 = make_obligation(0x01, 1, 2, 1, 10_000);
+        let ob2 = make_obligation(0x02, 1, 2, 1, 20_000);
+        assert!(ch.clear_obligation(&ob1).is_ok());
+        assert!(ch.clear_obligation(&ob2).is_ok());
+        assert_eq!(ch.get_account(1).unwrap().balance, 70_000);
+        assert_eq!(ch.get_account(2).unwrap().balance, 30_000);
+    }
+
+    #[test]
+    fn test_exact_balance_obligation_succeeds() {
+        // Clearing exactly the available balance should succeed.
+        let mut ch = ClearingHouse::new();
+        ch.register_account(1, 5_000);
+        ch.register_account(2, 0);
+        let ob = make_obligation(0xCC, 1, 2, 1, 5_000);
+        assert!(ch.clear_obligation(&ob).is_ok());
+        assert_eq!(ch.get_account(1).unwrap().balance, 0);
+        assert_eq!(ch.get_account(2).unwrap().balance, 5_000);
     }
 }

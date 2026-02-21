@@ -415,4 +415,96 @@ mod tests {
         assert!(result.success);
         assert_eq!(result.steps_verified, 100);
     }
+
+    #[test]
+    fn verify_both_empty_logs_succeed() {
+        let result = ReplayVerifier::verify(&[], &[]);
+        assert!(result.success);
+        assert_eq!(result.steps_verified, 0);
+        assert!(result.discrepancies.is_empty());
+    }
+
+    #[test]
+    fn verify_expected_empty_actual_nonempty() {
+        let j = make_journal(&[(100, JournalEvent::TradeReceived { trade_id: 1 })]);
+        let log = ReplayVerifier::build_replay_log(&j);
+        let result = ReplayVerifier::verify(&[], &log);
+        assert!(!result.success);
+        assert!(!result.discrepancies.is_empty());
+    }
+
+    #[test]
+    fn step_hash_differs_for_different_sequences() {
+        let j1 = make_journal(&[(100, JournalEvent::TradeReceived { trade_id: 1 })]);
+        // Manually build a journal that starts at a different sequence by
+        // inserting a dummy entry first.
+        let j2 = make_journal(&[
+            (50, JournalEvent::TradeReceived { trade_id: 0 }),
+            (100, JournalEvent::TradeReceived { trade_id: 1 }),
+        ]);
+        let log1 = ReplayVerifier::build_replay_log(&j1);
+        let log2 = ReplayVerifier::build_replay_log(&j2);
+        // The TradeReceived{trade_id:1} entry is at seq 1 in log1 and seq 2 in log2.
+        assert_ne!(log1[0].content_hash, log2[1].content_hash);
+    }
+
+    #[test]
+    fn event_kind_bytes_cover_all_variants() {
+        let kinds = [
+            ReplayVerifier::event_kind_byte(&JournalEvent::TradeReceived { trade_id: 0 }),
+            ReplayVerifier::event_kind_byte(&JournalEvent::NettingCompleted {
+                obligation_count: 0,
+            }),
+            ReplayVerifier::event_kind_byte(&JournalEvent::ClearingAttempted {
+                obligation_count: 0,
+                success_count: 0,
+                fail_count: 0,
+            }),
+            ReplayVerifier::event_kind_byte(&JournalEvent::SettlementCompleted { trade_count: 0 }),
+            ReplayVerifier::event_kind_byte(&JournalEvent::SettlementFailed {
+                trade_id: 0,
+                reason: String::new(),
+            }),
+        ];
+        // Must be exactly 0..4
+        let mut sorted = kinds;
+        sorted.sort_unstable();
+        assert_eq!(sorted, [0, 1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn journal_hash_empty_is_fnv_basis() {
+        let journal = SettlementJournal::new();
+        let h = ReplayVerifier::compute_journal_hash(&journal);
+        assert_eq!(h, 0xcbf29ce484222325u64);
+    }
+
+    #[test]
+    fn journal_hash_order_matters() {
+        // Same events in different order produce different hashes.
+        let j1 = make_journal(&[
+            (100, JournalEvent::TradeReceived { trade_id: 1 }),
+            (200, JournalEvent::NettingCompleted { obligation_count: 3 }),
+        ]);
+        let j2 = make_journal(&[
+            (200, JournalEvent::NettingCompleted { obligation_count: 3 }),
+            (100, JournalEvent::TradeReceived { trade_id: 1 }),
+        ]);
+        let h1 = ReplayVerifier::compute_journal_hash(&j1);
+        let h2 = ReplayVerifier::compute_journal_hash(&j2);
+        assert_ne!(h1, h2);
+    }
+
+    #[test]
+    fn replay_result_content_hash_differs_on_failure() {
+        let j_ok = make_journal(&[(100, JournalEvent::TradeReceived { trade_id: 1 })]);
+        let j_bad = make_journal(&[(100, JournalEvent::TradeReceived { trade_id: 999 })]);
+        let log_ok = ReplayVerifier::build_replay_log(&j_ok);
+        let log_bad = ReplayVerifier::build_replay_log(&j_bad);
+
+        let r_match = ReplayVerifier::verify(&log_ok, &log_ok);
+        let r_mismatch = ReplayVerifier::verify(&log_ok, &log_bad);
+        // A match and a mismatch produce different result hashes.
+        assert_ne!(r_match.content_hash, r_mismatch.content_hash);
+    }
 }

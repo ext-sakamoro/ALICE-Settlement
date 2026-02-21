@@ -362,4 +362,70 @@ mod tests {
         assert_eq!(req.stress_margin, 0);
         assert_eq!(req.total_margin, 42);
     }
+
+    #[test]
+    fn content_hash_nonzero_for_zero_payment() {
+        // Even a zero-payment obligation should produce a non-zero content_hash.
+        let engine = default_engine();
+        let ob = make_obligation(1, 2, 0, 0);
+        let req = engine.compute_obligation_margin(&ob);
+        // hash encodes (account_id=1, total=100) — must be non-zero
+        assert_ne!(req.content_hash, 0);
+    }
+
+    #[test]
+    fn portfolio_margin_empty_obligations() {
+        let engine = default_engine();
+        let req = engine.compute_portfolio_margin(42, &[]);
+        assert_eq!(req.account_id, 42);
+        assert_eq!(req.initial_margin, 0);
+        assert_eq!(req.variation_margin, 0);
+        assert_eq!(req.stress_margin, 0);
+        // floor still applies
+        assert_eq!(req.total_margin, 100);
+    }
+
+    #[test]
+    fn stress_scenarios_no_shock_gives_zero_stress() {
+        // If all scenarios have factor=1.0, shocked == notional, loss == 0.
+        let config = MarginConfig {
+            initial_margin_rate: 0.0,
+            variation_margin_rate: 0.0,
+            stress_scenarios: vec![1.0, 1.0, 1.0],
+            margin_floor: 0,
+        };
+        let engine = MarginEngine::new(config);
+        let ob = make_obligation(1, 2, 10, 5_000);
+        let req = engine.compute_obligation_margin(&ob);
+        assert_eq!(req.stress_margin, 0);
+    }
+
+    #[test]
+    fn margin_config_accessed_via_config_method() {
+        let engine = default_engine();
+        let cfg = engine.config();
+        assert!((cfg.initial_margin_rate - 0.05).abs() < 1e-10);
+        assert_eq!(cfg.margin_floor, 100);
+    }
+
+    #[test]
+    fn portfolio_margin_content_hash_differs_by_account() {
+        let engine = default_engine();
+        let obs = vec![make_obligation(100, 200, 5, 2_000)];
+        let r1 = engine.compute_portfolio_margin(100, &obs);
+        let r2 = engine.compute_portfolio_margin(200, &obs);
+        // account_id differs → content_hash must differ
+        assert_ne!(r1.content_hash, r2.content_hash);
+    }
+
+    #[test]
+    fn large_notional_does_not_overflow() {
+        // Use i64::MAX / 2 as notional to verify saturating arithmetic.
+        let engine = default_engine();
+        let large_payment: i64 = i64::MAX / 2;
+        let ob = make_obligation(1, 2, 1, large_payment);
+        let req = engine.compute_obligation_margin(&ob);
+        // Should not panic; total_margin must be non-negative.
+        assert!(req.total_margin >= 0);
+    }
 }
