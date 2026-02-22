@@ -80,10 +80,7 @@ impl ClearingHouse {
     ///
     /// Checks that the deliverer has a balance of at least `net_payment`, then
     /// transfers `net_payment` from deliverer to receiver.
-    pub fn clear_obligation(
-        &mut self,
-        obligation: &NetObligation,
-    ) -> Result<(), ClearingError> {
+    pub fn clear_obligation(&mut self, obligation: &NetObligation) -> Result<(), ClearingError> {
         // Verify both accounts exist before mutating anything.
         if !self.accounts.contains_key(&obligation.deliverer_id) {
             return Err(ClearingError::AccountNotFound(obligation.deliverer_id));

@@ -102,7 +102,10 @@ impl DefaultWaterfall {
         }
 
         let capacities = [
-            (WaterfallLayer::DefaulterMargin, self.config.defaulter_margin),
+            (
+                WaterfallLayer::DefaulterMargin,
+                self.config.defaulter_margin,
+            ),
             (WaterfallLayer::DefaulterFund, self.config.defaulter_fund),
             (WaterfallLayer::CcpFirstLoss, self.config.ccp_first_loss),
             (WaterfallLayer::MembersFund, self.config.members_fund),
@@ -165,7 +168,10 @@ impl DefaultWaterfall {
 
     fn zero_result(&self, loss: i64) -> WaterfallResult {
         let capacities = [
-            (WaterfallLayer::DefaulterMargin, self.config.defaulter_margin),
+            (
+                WaterfallLayer::DefaulterMargin,
+                self.config.defaulter_margin,
+            ),
             (WaterfallLayer::DefaulterFund, self.config.defaulter_fund),
             (WaterfallLayer::CcpFirstLoss, self.config.ccp_first_loss),
             (WaterfallLayer::MembersFund, self.config.members_fund),
@@ -383,7 +389,10 @@ mod tests {
 
     #[test]
     fn waterfall_layer_equality() {
-        assert_eq!(WaterfallLayer::DefaulterMargin, WaterfallLayer::DefaulterMargin);
+        assert_eq!(
+            WaterfallLayer::DefaulterMargin,
+            WaterfallLayer::DefaulterMargin
+        );
         assert_ne!(WaterfallLayer::DefaulterMargin, WaterfallLayer::CcpCapital);
     }
 

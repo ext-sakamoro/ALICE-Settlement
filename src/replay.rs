@@ -67,7 +67,12 @@ impl ReplayVerifier {
             .map(|entry| {
                 let event_kind = Self::event_kind_byte(&entry.event);
                 let event_payload = Self::event_payload(&entry.event);
-                let hash = Self::step_hash(entry.sequence, entry.timestamp_ns, event_kind, event_payload);
+                let hash = Self::step_hash(
+                    entry.sequence,
+                    entry.timestamp_ns,
+                    event_kind,
+                    event_payload,
+                );
                 ReplayStep {
                     sequence: entry.sequence,
                     timestamp_ns: entry.timestamp_ns,
@@ -220,10 +225,7 @@ mod tests {
 
     #[test]
     fn single_entry_replay() {
-        let journal = make_journal(&[(
-            1000,
-            JournalEvent::TradeReceived { trade_id: 42 },
-        )]);
+        let journal = make_journal(&[(1000, JournalEvent::TradeReceived { trade_id: 42 })]);
         let log = ReplayVerifier::build_replay_log(&journal);
         assert_eq!(log.len(), 1);
         assert_eq!(log[0].sequence, 1);
@@ -237,7 +239,12 @@ mod tests {
         let journal = make_journal(&[
             (100, JournalEvent::TradeReceived { trade_id: 1 }),
             (200, JournalEvent::TradeReceived { trade_id: 2 }),
-            (300, JournalEvent::NettingCompleted { obligation_count: 5 }),
+            (
+                300,
+                JournalEvent::NettingCompleted {
+                    obligation_count: 5,
+                },
+            ),
         ]);
         let log = ReplayVerifier::build_replay_log(&journal);
         assert_eq!(log.len(), 3);
@@ -264,12 +271,8 @@ mod tests {
 
     #[test]
     fn mismatched_logs_detect_discrepancy() {
-        let j1 = make_journal(&[
-            (100, JournalEvent::TradeReceived { trade_id: 1 }),
-        ]);
-        let j2 = make_journal(&[
-            (100, JournalEvent::TradeReceived { trade_id: 999 }),
-        ]);
+        let j1 = make_journal(&[(100, JournalEvent::TradeReceived { trade_id: 1 })]);
+        let j2 = make_journal(&[(100, JournalEvent::TradeReceived { trade_id: 999 })]);
         let log1 = ReplayVerifier::build_replay_log(&j1);
         let log2 = ReplayVerifier::build_replay_log(&j2);
 
@@ -324,7 +327,12 @@ mod tests {
     fn journal_hash_deterministic() {
         let journal = make_journal(&[
             (100, JournalEvent::TradeReceived { trade_id: 1 }),
-            (200, JournalEvent::NettingCompleted { obligation_count: 3 }),
+            (
+                200,
+                JournalEvent::NettingCompleted {
+                    obligation_count: 3,
+                },
+            ),
         ]);
         let h1 = ReplayVerifier::compute_journal_hash(&journal);
         let h2 = ReplayVerifier::compute_journal_hash(&journal);
@@ -362,7 +370,9 @@ mod tests {
     fn all_event_kinds_have_distinct_discriminants() {
         let events = vec![
             JournalEvent::TradeReceived { trade_id: 1 },
-            JournalEvent::NettingCompleted { obligation_count: 1 },
+            JournalEvent::NettingCompleted {
+                obligation_count: 1,
+            },
             JournalEvent::ClearingAttempted {
                 obligation_count: 1,
                 success_count: 1,
@@ -399,12 +409,7 @@ mod tests {
     #[test]
     fn large_journal_replay() {
         let events: Vec<(u64, JournalEvent)> = (0..100)
-            .map(|i| {
-                (
-                    i * 1_000_000,
-                    JournalEvent::TradeReceived { trade_id: i },
-                )
-            })
+            .map(|i| (i * 1_000_000, JournalEvent::TradeReceived { trade_id: i }))
             .collect();
         let journal = make_journal(&events);
         let log = ReplayVerifier::build_replay_log(&journal);
@@ -484,10 +489,20 @@ mod tests {
         // Same events in different order produce different hashes.
         let j1 = make_journal(&[
             (100, JournalEvent::TradeReceived { trade_id: 1 }),
-            (200, JournalEvent::NettingCompleted { obligation_count: 3 }),
+            (
+                200,
+                JournalEvent::NettingCompleted {
+                    obligation_count: 3,
+                },
+            ),
         ]);
         let j2 = make_journal(&[
-            (200, JournalEvent::NettingCompleted { obligation_count: 3 }),
+            (
+                200,
+                JournalEvent::NettingCompleted {
+                    obligation_count: 3,
+                },
+            ),
             (100, JournalEvent::TradeReceived { trade_id: 1 }),
         ]);
         let h1 = ReplayVerifier::compute_journal_hash(&j1);

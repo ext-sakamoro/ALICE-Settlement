@@ -284,7 +284,7 @@ mod tests {
         let engine = default_engine();
         let obs = vec![
             make_obligation(100, 200, 5, 4_000), // 100 delivers
-            make_obligation(300, 100, 3, 3_000),  // 100 receives
+            make_obligation(300, 100, 3, 3_000), // 100 receives
         ];
         let req = engine.compute_portfolio_margin(100, &obs);
 

@@ -133,10 +133,7 @@ mod tests {
         let mut journal = SettlementJournal::new();
 
         for i in 0..10u64 {
-            journal.record(
-                i * 1_000,
-                JournalEvent::TradeReceived { trade_id: i },
-            );
+            journal.record(i * 1_000, JournalEvent::TradeReceived { trade_id: i });
         }
 
         assert_eq!(journal.len(), 10);
@@ -204,7 +201,12 @@ mod tests {
     fn test_journal_all_event_variants() {
         let mut journal = SettlementJournal::new();
         journal.record(1, JournalEvent::TradeReceived { trade_id: 1 });
-        journal.record(2, JournalEvent::NettingCompleted { obligation_count: 5 });
+        journal.record(
+            2,
+            JournalEvent::NettingCompleted {
+                obligation_count: 5,
+            },
+        );
         journal.record(
             3,
             JournalEvent::ClearingAttempted {

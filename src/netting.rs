@@ -288,7 +288,11 @@ fn cancel_cycle(obs: &mut [NetObligation], cycle_indices: &[usize]) {
 /// Return the canonical (lo, hi) ordering of a counterparty pair.
 #[inline(always)]
 fn canonical_pair(a: u64, b: u64) -> (u64, u64) {
-    if a <= b { (a, b) } else { (b, a) }
+    if a <= b {
+        (a, b)
+    } else {
+        (b, a)
+    }
 }
 
 /// Clamp an i128 value into i64 range.
@@ -355,7 +359,7 @@ mod tests {
         let mut engine = NettingEngine::new();
 
         let t1 = make_trade(1, 0xABCD, 100, 200, 100, 100); // A buys 100 @ 100
-        let t2 = make_trade(2, 0xABCD, 200, 100, 120, 30);  // B buys 30 @ 120
+        let t2 = make_trade(2, 0xABCD, 200, 100, 120, 30); // B buys 30 @ 120
 
         engine.add_trade(&t1);
         engine.add_trade(&t2);
@@ -394,11 +398,17 @@ mod tests {
             assert_eq!(ob.deliverer_id, 200);
         }
 
-        let sym1 = obligations.iter().find(|o| o.symbol_hash == 0x0001).unwrap();
+        let sym1 = obligations
+            .iter()
+            .find(|o| o.symbol_hash == 0x0001)
+            .unwrap();
         assert_eq!(sym1.net_quantity, 5);
         assert_eq!(sym1.net_payment, 500);
 
-        let sym2 = obligations.iter().find(|o| o.symbol_hash == 0x0002).unwrap();
+        let sym2 = obligations
+            .iter()
+            .find(|o| o.symbol_hash == 0x0002)
+            .unwrap();
         assert_eq!(sym2.net_quantity, 3);
         assert_eq!(sym2.net_payment, 600);
     }
@@ -517,7 +527,11 @@ mod tests {
         ];
         let result = multilateral_net(obs);
         // All edges cancelled: empty result
-        assert!(result.is_empty(), "perfect triangle should cancel: {:?}", result);
+        assert!(
+            result.is_empty(),
+            "perfect triangle should cancel: {:?}",
+            result
+        );
     }
 
     #[test]
