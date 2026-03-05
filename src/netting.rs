@@ -288,7 +288,7 @@ fn cancel_cycle(obs: &mut [NetObligation], cycle_indices: &[usize]) {
 
 /// Return the canonical (lo, hi) ordering of a counterparty pair.
 #[inline(always)]
-fn canonical_pair(a: u64, b: u64) -> (u64, u64) {
+const fn canonical_pair(a: u64, b: u64) -> (u64, u64) {
     if a <= b {
         (a, b)
     } else {
@@ -490,7 +490,7 @@ mod tests {
                 trade_count: 1,
             },
         ];
-        let result = multilateral_net(obs.clone());
+        let result = multilateral_net(obs);
         assert_eq!(result.len(), 2);
         // Quantities unchanged (no cycle to cancel)
         let total_qty: u64 = result.iter().map(|o| o.net_quantity).sum();
@@ -530,8 +530,7 @@ mod tests {
         // All edges cancelled: empty result
         assert!(
             result.is_empty(),
-            "perfect triangle should cancel: {:?}",
-            result
+            "perfect triangle should cancel: {result:?}"
         );
     }
 
@@ -631,8 +630,7 @@ mod tests {
         let result = multilateral_net(obs);
 
         // Symbol 0x1: fully cancelled (triangle)
-        let sym1: Vec<&NetObligation> = result.iter().filter(|o| o.symbol_hash == 0x1).collect();
-        assert!(sym1.is_empty());
+        assert!(!result.iter().any(|o| o.symbol_hash == 0x1));
 
         // Symbol 0x2: unchanged
         let sym2: Vec<&NetObligation> = result.iter().filter(|o| o.symbol_hash == 0x2).collect();
@@ -711,7 +709,7 @@ mod tests {
         engine.add_trade(&t1);
         engine.add_trade(&t2);
         let obs = engine.compute_net();
-        assert!(obs.is_empty(), "perfect offset should cancel: {:?}", obs);
+        assert!(obs.is_empty(), "perfect offset should cancel: {obs:?}");
     }
 
     #[test]

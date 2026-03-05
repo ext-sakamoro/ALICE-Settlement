@@ -47,7 +47,7 @@ mod tests {
     fn test_trade_creation() {
         let trade = Trade {
             trade_id: 1,
-            symbol_hash: 0xdeadbeef,
+            symbol_hash: 0xdead_beef,
             buyer_id: 100,
             seller_id: 200,
             price: 50_000,
@@ -57,7 +57,7 @@ mod tests {
         };
 
         assert_eq!(trade.trade_id, 1);
-        assert_eq!(trade.symbol_hash, 0xdeadbeef);
+        assert_eq!(trade.symbol_hash, 0xdead_beef);
         assert_eq!(trade.buyer_id, 100);
         assert_eq!(trade.seller_id, 200);
         assert_eq!(trade.price, 50_000);

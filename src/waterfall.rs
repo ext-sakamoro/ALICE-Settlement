@@ -90,7 +90,7 @@ pub struct DefaultWaterfall {
 impl DefaultWaterfall {
     /// Create a new waterfall with the given layer capacities.
     #[must_use]
-    pub fn new(config: WaterfallConfig) -> Self {
+    pub const fn new(config: WaterfallConfig) -> Self {
         Self { config }
     }
 
@@ -155,7 +155,7 @@ impl DefaultWaterfall {
     /// Total capacity across all waterfall layers.
     #[inline]
     #[must_use]
-    pub fn total_capacity(&self) -> i64 {
+    pub const fn total_capacity(&self) -> i64 {
         self.config
             .defaulter_margin
             .saturating_add(self.config.defaulter_fund)
@@ -167,7 +167,7 @@ impl DefaultWaterfall {
     /// Access the current configuration.
     #[inline]
     #[must_use]
-    pub fn config(&self) -> &WaterfallConfig {
+    pub const fn config(&self) -> &WaterfallConfig {
         &self.config
     }
 
@@ -444,7 +444,7 @@ mod tests {
             members_fund: 444,
             ccp_capital: 555,
         };
-        let wf = DefaultWaterfall::new(cfg.clone());
+        let wf = DefaultWaterfall::new(cfg);
         let got = wf.config();
         assert_eq!(got.defaulter_margin, 111);
         assert_eq!(got.defaulter_fund, 222);

@@ -219,7 +219,7 @@ mod tests {
                 assert_eq!(required, 5_000);
                 assert_eq!(available, 1_000);
             }
-            other => panic!("unexpected error: {:?}", other),
+            other @ ClearingError::AccountNotFound(_) => panic!("unexpected error: {other:?}"),
         }
 
         // Balances must be unchanged after failure
@@ -241,7 +241,9 @@ mod tests {
             ClearingError::AccountNotFound(id) => {
                 assert_eq!(id, 200);
             }
-            other => panic!("unexpected error: {:?}", other),
+            other @ ClearingError::InsufficientBalance { .. } => {
+                panic!("unexpected error: {other:?}")
+            }
         }
     }
 
@@ -300,7 +302,7 @@ mod tests {
         let ob = make_obligation(0xAA, 999, 200, 1, 100);
         match ch.clear_obligation(&ob) {
             Err(ClearingError::AccountNotFound(id)) => assert_eq!(id, 999),
-            other => panic!("expected AccountNotFound(999), got {:?}", other),
+            other => panic!("expected AccountNotFound(999), got {other:?}"),
         }
     }
 
@@ -312,7 +314,7 @@ mod tests {
         let ob = make_obligation(0xBB, 100, 888, 1, 100);
         match ch.clear_obligation(&ob) {
             Err(ClearingError::AccountNotFound(id)) => assert_eq!(id, 888),
-            other => panic!("expected AccountNotFound(888), got {:?}", other),
+            other => panic!("expected AccountNotFound(888), got {other:?}"),
         }
     }
 
@@ -439,7 +441,7 @@ mod tests {
                     prop_assert_eq!(required,   net_payment);
                     prop_assert_eq!(available,  deliverer_balance);
                 }
-                other => prop_assert!(false, "expected InsufficientBalance, got {:?}", other),
+                other @ ClearingError::AccountNotFound(_) => prop_assert!(false, "expected InsufficientBalance, got {:?}", other),
             }
 
             // Balances must be untouched after failure
@@ -475,7 +477,7 @@ mod tests {
                     let expected_id = if missing_is_deliverer { deliverer_id } else { receiver_id };
                     prop_assert_eq!(id, expected_id);
                 }
-                other => prop_assert!(false, "expected AccountNotFound, got {:?}", other),
+                other @ ClearingError::InsufficientBalance { .. } => prop_assert!(false, "expected AccountNotFound, got {:?}", other),
             }
         }
     }

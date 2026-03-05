@@ -68,7 +68,7 @@ pub struct MarginEngine {
 impl MarginEngine {
     /// Create a new margin engine with the given configuration.
     #[must_use]
-    pub fn new(config: MarginConfig) -> Self {
+    pub const fn new(config: MarginConfig) -> Self {
         Self {
             config,
             _rcp_one: 1.0,
@@ -161,7 +161,7 @@ impl MarginEngine {
     /// Access the current configuration.
     #[inline]
     #[must_use]
-    pub fn config(&self) -> &MarginConfig {
+    pub const fn config(&self) -> &MarginConfig {
         &self.config
     }
 }

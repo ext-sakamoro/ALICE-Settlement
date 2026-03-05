@@ -111,7 +111,7 @@ impl ReplayVerifier {
             let seq = if min_len > 0 {
                 expected
                     .get(min_len - 1)
-                    .or(actual.get(min_len - 1))
+                    .or_else(|| actual.get(min_len - 1))
                     .map_or(1, |s| s.sequence + 1)
             } else {
                 1
@@ -155,7 +155,7 @@ impl ReplayVerifier {
     }
 
     /// Map event variants to a discriminant byte.
-    fn event_kind_byte(event: &JournalEvent) -> u8 {
+    const fn event_kind_byte(event: &JournalEvent) -> u8 {
         match event {
             JournalEvent::TradeReceived { .. } => 0,
             JournalEvent::NettingCompleted { .. } => 1,
@@ -365,12 +365,12 @@ mod tests {
         let journal = SettlementJournal::new();
         let h = ReplayVerifier::compute_journal_hash(&journal);
         // Empty journal returns the FNV offset basis
-        assert_eq!(h, 0xcbf29ce484222325);
+        assert_eq!(h, 0xcbf2_9ce4_8422_2325);
     }
 
     #[test]
     fn all_event_kinds_have_distinct_discriminants() {
-        let events = vec![
+        let events = [
             JournalEvent::TradeReceived { trade_id: 1 },
             JournalEvent::NettingCompleted {
                 obligation_count: 1,
@@ -386,14 +386,11 @@ mod tests {
                 reason: "test".to_string(),
             },
         ];
-        let kinds: Vec<u8> = events
-            .iter()
-            .map(|e| ReplayVerifier::event_kind_byte(e))
-            .collect();
+        let kinds: Vec<u8> = events.iter().map(ReplayVerifier::event_kind_byte).collect();
         // All discriminants must be unique
         for i in 0..kinds.len() {
             for j in (i + 1)..kinds.len() {
-                assert_ne!(kinds[i], kinds[j], "kinds {} and {} collide", i, j);
+                assert_ne!(kinds[i], kinds[j], "kinds {i} and {j} collide");
             }
         }
     }
@@ -483,7 +480,7 @@ mod tests {
     fn journal_hash_empty_is_fnv_basis() {
         let journal = SettlementJournal::new();
         let h = ReplayVerifier::compute_journal_hash(&journal);
-        assert_eq!(h, 0xcbf29ce484222325u64);
+        assert_eq!(h, 0xcbf2_9ce4_8422_2325_u64);
     }
 
     #[test]

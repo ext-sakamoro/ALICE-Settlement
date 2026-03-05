@@ -50,7 +50,7 @@ impl SettlementJournal {
     /// Create a new, empty journal. The first recorded entry will have sequence 1.
     #[inline(always)]
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             entries: Vec::new(),
             next_seq: 1,
@@ -78,14 +78,14 @@ impl SettlementJournal {
     /// Return the number of entries in the journal.
     #[inline(always)]
     #[must_use]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.entries.len()
     }
 
     /// Return true when the journal contains no entries.
     #[inline(always)]
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
 
