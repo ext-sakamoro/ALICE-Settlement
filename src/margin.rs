@@ -67,6 +67,7 @@ pub struct MarginEngine {
 
 impl MarginEngine {
     /// Create a new margin engine with the given configuration.
+    #[must_use]
     pub fn new(config: MarginConfig) -> Self {
         Self {
             config,
@@ -75,6 +76,7 @@ impl MarginEngine {
     }
 
     /// Compute margin for a single obligation from the deliverer's perspective.
+    #[must_use]
     pub fn compute_obligation_margin(&self, obligation: &NetObligation) -> MarginRequirement {
         let notional = obligation.net_payment.unsigned_abs() as i64;
 
@@ -99,6 +101,7 @@ impl MarginEngine {
     ///
     /// Obligations where the account is deliverer contribute short exposure;
     /// obligations where the account is receiver contribute long exposure.
+    #[must_use]
     pub fn compute_portfolio_margin(
         &self,
         account_id: u64,
@@ -157,6 +160,7 @@ impl MarginEngine {
 
     /// Access the current configuration.
     #[inline]
+    #[must_use]
     pub fn config(&self) -> &MarginConfig {
         &self.config
     }

@@ -60,6 +60,7 @@ impl ReplayVerifier {
     /// Each journal entry is mapped to a `ReplayStep` with a deterministic
     /// content hash derived from the entry's sequence, timestamp, and event
     /// kind/payload.
+    #[must_use]
     pub fn build_replay_log(journal: &SettlementJournal) -> Vec<ReplayStep> {
         journal
             .entries()
@@ -87,20 +88,21 @@ impl ReplayVerifier {
     ///
     /// Compares step-by-step, recording all discrepancies.  A length
     /// mismatch is reported as a discrepancy at the shorter log's length.
+    #[must_use]
     pub fn verify(expected: &[ReplayStep], actual: &[ReplayStep]) -> ReplayResult {
         let mut discrepancies = Vec::new();
         let min_len = expected.len().min(actual.len());
         let mut verified = 0;
 
         for i in 0..min_len {
-            if expected[i].content_hash != actual[i].content_hash {
+            if expected[i].content_hash == actual[i].content_hash {
+                verified += 1;
+            } else {
                 discrepancies.push(ReplayDiscrepancy {
                     sequence: expected[i].sequence,
                     expected_hash: expected[i].content_hash,
                     actual_hash: actual[i].content_hash,
                 });
-            } else {
-                verified += 1;
             }
         }
 
@@ -110,8 +112,7 @@ impl ReplayVerifier {
                 expected
                     .get(min_len - 1)
                     .or(actual.get(min_len - 1))
-                    .map(|s| s.sequence + 1)
-                    .unwrap_or(1)
+                    .map_or(1, |s| s.sequence + 1)
             } else {
                 1
             };
@@ -137,8 +138,9 @@ impl ReplayVerifier {
     ///
     /// Chains all entry hashes together, producing a cumulative fingerprint
     /// suitable for integrity verification.
+    #[must_use]
     pub fn compute_journal_hash(journal: &SettlementJournal) -> u64 {
-        let mut cumulative: u64 = 0xcbf29ce484222325; // FNV offset basis
+        let mut cumulative: u64 = 0xcbf2_9ce4_8422_2325; // FNV offset basis
         for entry in journal.entries() {
             let kind = Self::event_kind_byte(&entry.event);
             let payload = Self::event_payload(&entry.event);

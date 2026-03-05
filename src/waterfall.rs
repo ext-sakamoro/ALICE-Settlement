@@ -89,6 +89,7 @@ pub struct DefaultWaterfall {
 
 impl DefaultWaterfall {
     /// Create a new waterfall with the given layer capacities.
+    #[must_use]
     pub fn new(config: WaterfallConfig) -> Self {
         Self { config }
     }
@@ -96,6 +97,7 @@ impl DefaultWaterfall {
     /// Absorb a loss through the waterfall layers in order.
     ///
     /// Returns a detailed result showing how much each layer absorbed.
+    #[must_use]
     pub fn absorb_loss(&self, loss: i64) -> WaterfallResult {
         if loss <= 0 {
             return self.zero_result(loss);
@@ -145,12 +147,14 @@ impl DefaultWaterfall {
     }
 
     /// Absorb multiple independent losses, returning individual results.
+    #[must_use]
     pub fn absorb_losses(&self, losses: &[i64]) -> Vec<WaterfallResult> {
         losses.iter().map(|&l| self.absorb_loss(l)).collect()
     }
 
     /// Total capacity across all waterfall layers.
     #[inline]
+    #[must_use]
     pub fn total_capacity(&self) -> i64 {
         self.config
             .defaulter_margin
@@ -162,6 +166,7 @@ impl DefaultWaterfall {
 
     /// Access the current configuration.
     #[inline]
+    #[must_use]
     pub fn config(&self) -> &WaterfallConfig {
         &self.config
     }

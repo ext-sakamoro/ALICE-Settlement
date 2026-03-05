@@ -9,14 +9,18 @@ publish = false
 
 [lib]
 name = "alice_settlement"
-crate-type = ["rlib"]
+crate-type = ["rlib", "cdylib"]
 
 [features]
 default = ["std"]
 std = []
+ffi = []
 
 [dependencies]
 alice-ledger = { path = "../ALICE-Ledger" }
+
+[dev-dependencies]
+proptest = "1.4"
 
 [profile.release]
 opt-level = 3

@@ -25,7 +25,7 @@ pub struct NetObligation {
 }
 
 /// Key for grouping bilateral trade flows per symbol.
-/// Always stored as (min_id, max_id) to unify both directions.
+/// Always stored as (`min_id`, `max_id`) to unify both directions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct NettingKey {
     symbol_hash: u64,
@@ -36,10 +36,10 @@ struct NettingKey {
 /// Per-key accumulator tracking net position.
 #[derive(Debug, Default)]
 struct NettingAccumulator {
-    /// Signed quantity: positive means lo_id is net buyer from hi_id.
-    /// Each buy by lo_id adds qty; each sell by lo_id subtracts qty.
+    /// Signed quantity: positive means `lo_id` is net buyer from `hi_id`.
+    /// Each buy by `lo_id` adds qty; each sell by `lo_id` subtracts qty.
     net_quantity_signed: i128,
-    /// Net payment signed (positive means lo_id pays hi_id).
+    /// Net payment signed (positive means `lo_id` pays `hi_id`).
     net_payment_signed: i128,
     trade_count: u32,
 }
@@ -55,6 +55,7 @@ pub struct NettingEngine {
 impl NettingEngine {
     /// Create a new, empty netting engine.
     #[inline(always)]
+    #[must_use]
     pub fn new() -> Self {
         Self {
             accumulators: HashMap::new(),
@@ -63,8 +64,8 @@ impl NettingEngine {
 
     /// Accumulate a trade into the netting state.
     ///
-    /// For the canonical (lo_id, hi_id) pair, a trade where lo_id is buyer
-    /// adds to the signed quantity; a trade where lo_id is seller subtracts.
+    /// For the canonical (`lo_id`, `hi_id`) pair, a trade where `lo_id` is buyer
+    /// adds to the signed quantity; a trade where `lo_id` is seller subtracts.
     pub fn add_trade(&mut self, trade: &Trade) {
         let (lo_id, hi_id) = canonical_pair(trade.buyer_id, trade.seller_id);
         let key = NettingKey {
@@ -95,6 +96,7 @@ impl NettingEngine {
     /// Returns one `NetObligation` per (symbol, counterparty-pair) where the
     /// net quantity is non-zero. Pairs with perfectly offsetting trades produce
     /// no obligation.
+    #[must_use]
     pub fn compute_net(&self) -> Vec<NetObligation> {
         let mut obligations = Vec::with_capacity(self.accumulators.len());
 
@@ -147,6 +149,7 @@ impl NettingEngine {
     ///
     /// The resulting obligations are a strict subset of the bilateral net,
     /// with reduced gross exposure where circular flows exist.
+    #[must_use]
     pub fn compute_multilateral(&self) -> Vec<NetObligation> {
         multilateral_net(self.compute_net())
     }
@@ -169,6 +172,7 @@ impl Default for NettingEngine {
 ///
 /// Obligations are grouped by `symbol_hash`; cycles are only cancelled
 /// within the same symbol.
+#[must_use]
 pub fn multilateral_net(obligations: Vec<NetObligation>) -> Vec<NetObligation> {
     // Group by symbol
     let mut by_symbol: HashMap<u64, Vec<NetObligation>> = HashMap::new();
@@ -180,11 +184,8 @@ pub fn multilateral_net(obligations: Vec<NetObligation>) -> Vec<NetObligation> {
 
     for (_symbol, mut obs) in by_symbol {
         // Repeatedly find and cancel cycles until none remain
-        loop {
-            match find_cycle(&obs) {
-                Some(cycle_indices) => cancel_cycle(&mut obs, &cycle_indices),
-                None => break,
-            }
+        while let Some(cycle_indices) = find_cycle(&obs) {
+            cancel_cycle(&mut obs, &cycle_indices);
         }
         // Remove obligations reduced to zero
         obs.retain(|ob| ob.net_quantity > 0);
@@ -782,5 +783,89 @@ mod tests {
         assert_eq!(obs[0].trade_count, 3);
         // All three trades: A (100) buys from B (200)
         assert_eq!(obs[0].net_quantity, 18); // 10 + 5 + 3
+    }
+
+    // ── Property-based tests ──────────────────────────────────────────
+
+    use proptest::prelude::*;
+
+    proptest! {
+        /// Offsetting trades: two trades between the same parties with the same
+        /// quantity but reversed buyer/seller produce zero net obligations.
+        #[test]
+        fn prop_offsetting_trades_cancel(
+            symbol_hash in 1u64..u64::MAX,
+            lo_id in 1u64..1_000,
+            hi_offset in 1u64..1_000,
+            price in 1i64..1_000_000,
+            qty in 1u64..1_000_000,
+        ) {
+            let hi_id = lo_id + hi_offset; // guarantee lo_id != hi_id
+            let mut engine = NettingEngine::new();
+            // lo_id buys qty from hi_id
+            engine.add_trade(&make_trade(1, symbol_hash, lo_id, hi_id, price, qty));
+            // hi_id buys qty from lo_id (exact reverse)
+            engine.add_trade(&make_trade(2, symbol_hash, hi_id, lo_id, price, qty));
+            let obs = engine.compute_net();
+            prop_assert!(
+                obs.is_empty(),
+                "offsetting trades must cancel, got: {:?}",
+                obs
+            );
+        }
+
+        /// Direction property: when lo_id accumulates more buying than selling
+        /// against hi_id, hi_id is the deliverer (net seller) in the obligation.
+        #[test]
+        fn prop_net_quantity_sign_determines_direction(
+            symbol_hash in 1u64..u64::MAX,
+            lo_id in 1u64..1_000,
+            hi_offset in 1u64..1_000,
+            price in 1i64..100_000,
+            buy_qty in 2u64..10_000,   // lo_id buys this amount
+            sell_qty in 1u64..5_000,   // lo_id sells this amount (always < buy_qty)
+        ) {
+            let hi_id = lo_id + hi_offset;
+            // sell_qty must be strictly less than buy_qty so lo_id is net buyer
+            let sell_qty = sell_qty % buy_qty; // 0..buy_qty-1
+            if sell_qty == 0 {
+                // degenerate: skip by returning success (no net to check)
+                return Ok(());
+            }
+            let mut engine = NettingEngine::new();
+            // lo_id buys buy_qty from hi_id
+            engine.add_trade(&make_trade(1, symbol_hash, lo_id, hi_id, price, buy_qty));
+            // lo_id sells sell_qty to hi_id
+            engine.add_trade(&make_trade(2, symbol_hash, hi_id, lo_id, price, sell_qty));
+            let obs = engine.compute_net();
+            prop_assert_eq!(obs.len(), 1);
+            // lo_id is net buyer => hi_id is deliverer, lo_id is receiver
+            prop_assert_eq!(obs[0].deliverer_id, hi_id,
+                "hi_id should be deliverer when lo_id is net buyer");
+            prop_assert_eq!(obs[0].receiver_id, lo_id,
+                "lo_id should be receiver when it is net buyer");
+        }
+
+        /// Trade count accuracy: N same-direction trades between the same pair
+        /// produce exactly one obligation with trade_count == N.
+        #[test]
+        fn prop_trade_count_equals_n(
+            symbol_hash in 1u64..u64::MAX,
+            lo_id in 1u64..1_000,
+            hi_offset in 1u64..1_000,
+            price in 1i64..100_000,
+            n in 1usize..20,
+        ) {
+            let hi_id = lo_id + hi_offset;
+            let mut engine = NettingEngine::new();
+            for i in 0..n {
+                // lo_id always buys from hi_id => same direction, no cancellation
+                engine.add_trade(&make_trade(i as u64 + 1, symbol_hash, lo_id, hi_id, price, 1));
+            }
+            let obs = engine.compute_net();
+            prop_assert_eq!(obs.len(), 1);
+            prop_assert_eq!(obs[0].trade_count, n as u32,
+                "trade_count must equal the number of accumulated trades");
+        }
     }
 }

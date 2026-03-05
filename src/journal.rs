@@ -49,6 +49,7 @@ pub struct SettlementJournal {
 impl SettlementJournal {
     /// Create a new, empty journal. The first recorded entry will have sequence 1.
     #[inline(always)]
+    #[must_use]
     pub fn new() -> Self {
         Self {
             entries: Vec::new(),
@@ -69,18 +70,21 @@ impl SettlementJournal {
 
     /// Return a slice of all journal entries in order.
     #[inline(always)]
+    #[must_use]
     pub fn entries(&self) -> &[JournalEntry] {
         &self.entries
     }
 
     /// Return the number of entries in the journal.
     #[inline(always)]
+    #[must_use]
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
     /// Return true when the journal contains no entries.
     #[inline(always)]
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
@@ -88,6 +92,7 @@ impl SettlementJournal {
     /// Return a reference to the most recent entry, or `None` if the journal
     /// is empty.
     #[inline(always)]
+    #[must_use]
     pub fn last_entry(&self) -> Option<&JournalEntry> {
         self.entries.last()
     }

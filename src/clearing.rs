@@ -49,6 +49,7 @@ pub struct ClearingHouse {
 impl ClearingHouse {
     /// Create an empty clearing house.
     #[inline(always)]
+    #[must_use]
     pub fn new() -> Self {
         Self {
             accounts: HashMap::new(),
@@ -72,6 +73,7 @@ impl ClearingHouse {
 
     /// Look up an account by identifier.
     #[inline(always)]
+    #[must_use]
     pub fn get_account(&self, id: u64) -> Option<&ClearingAccount> {
         self.accounts.get(&id)
     }
@@ -80,6 +82,10 @@ impl ClearingHouse {
     ///
     /// Checks that the deliverer has a balance of at least `net_payment`, then
     /// transfers `net_payment` from deliverer to receiver.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ClearingError`] if the account is missing or has insufficient funds.
     pub fn clear_obligation(&mut self, obligation: &NetObligation) -> Result<(), ClearingError> {
         // Verify both accounts exist before mutating anything.
         if !self.accounts.contains_key(&obligation.deliverer_id) {
@@ -367,5 +373,110 @@ mod tests {
         assert!(ch.clear_obligation(&ob).is_ok());
         assert_eq!(ch.get_account(1).unwrap().balance, 0);
         assert_eq!(ch.get_account(2).unwrap().balance, 5_000);
+    }
+
+    // ── Property-based tests ──────────────────────────────────────────
+
+    use proptest::prelude::*;
+
+    proptest! {
+        /// Balance conservation: after a successful clearing the sum of
+        /// deliverer.balance + receiver.balance is unchanged.
+        #[test]
+        fn prop_balance_conservation(
+            deliverer_balance in 0i64..1_000_000,
+            receiver_balance in 0i64..1_000_000,
+            net_payment in 0i64..500_000,
+        ) {
+            // Only run when the clearing will succeed (deliverer can cover payment)
+            prop_assume!(deliverer_balance >= net_payment);
+
+            let deliverer_id = 1u64;
+            let receiver_id  = 2u64;
+
+            let mut ch = ClearingHouse::new();
+            ch.register_account(deliverer_id, deliverer_balance);
+            ch.register_account(receiver_id,  receiver_balance);
+
+            let ob = make_obligation(0x01, deliverer_id, receiver_id, 1, net_payment);
+            let result = ch.clear_obligation(&ob);
+            prop_assert!(result.is_ok(), "clearing must succeed: {:?}", result);
+
+            let total_after =
+                ch.get_account(deliverer_id).unwrap().balance
+                + ch.get_account(receiver_id).unwrap().balance;
+
+            prop_assert_eq!(
+                total_after,
+                deliverer_balance + receiver_balance,
+                "total balance must be conserved"
+            );
+        }
+
+        /// Insufficient balance: when deliverer balance < net_payment the engine
+        /// must return InsufficientBalance and leave balances unchanged.
+        #[test]
+        fn prop_insufficient_balance_fails(
+            deliverer_balance in 0i64..999_999,
+            shortfall in 1i64..1_000,
+        ) {
+            let net_payment = deliverer_balance + shortfall; // always > balance
+
+            let deliverer_id = 10u64;
+            let receiver_id  = 20u64;
+
+            let mut ch = ClearingHouse::new();
+            ch.register_account(deliverer_id, deliverer_balance);
+            ch.register_account(receiver_id,  0);
+
+            let ob = make_obligation(0x02, deliverer_id, receiver_id, 1, net_payment);
+            let result = ch.clear_obligation(&ob);
+
+            prop_assert!(result.is_err(), "must fail when balance insufficient");
+            match result.unwrap_err() {
+                ClearingError::InsufficientBalance { account_id, required, available } => {
+                    prop_assert_eq!(account_id, deliverer_id);
+                    prop_assert_eq!(required,   net_payment);
+                    prop_assert_eq!(available,  deliverer_balance);
+                }
+                other => prop_assert!(false, "expected InsufficientBalance, got {:?}", other),
+            }
+
+            // Balances must be untouched after failure
+            prop_assert_eq!(ch.get_account(deliverer_id).unwrap().balance, deliverer_balance);
+            prop_assert_eq!(ch.get_account(receiver_id).unwrap().balance, 0);
+        }
+
+        /// Missing account: clearing with either account absent returns AccountNotFound.
+        #[test]
+        fn prop_missing_account_fails(
+            registered_balance in 0i64..1_000_000,
+            net_payment in 1i64..100_000,
+            missing_is_deliverer in any::<bool>(),
+        ) {
+            let deliverer_id = 100u64;
+            let receiver_id  = 200u64;
+
+            let mut ch = ClearingHouse::new();
+            if missing_is_deliverer {
+                // Only register receiver; deliverer is absent
+                ch.register_account(receiver_id, registered_balance);
+            } else {
+                // Only register deliverer; receiver is absent
+                ch.register_account(deliverer_id, registered_balance);
+            }
+
+            let ob = make_obligation(0x03, deliverer_id, receiver_id, 1, net_payment);
+            let result = ch.clear_obligation(&ob);
+
+            prop_assert!(result.is_err(), "must fail when an account is missing");
+            match result.unwrap_err() {
+                ClearingError::AccountNotFound(id) => {
+                    let expected_id = if missing_is_deliverer { deliverer_id } else { receiver_id };
+                    prop_assert_eq!(id, expected_id);
+                }
+                other => prop_assert!(false, "expected AccountNotFound, got {:?}", other),
+            }
+        }
     }
 }

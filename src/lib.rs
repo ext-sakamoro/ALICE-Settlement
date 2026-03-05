@@ -1,3 +1,15 @@
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_lossless,
+    clippy::similar_names,
+    clippy::many_single_char_names,
+    clippy::module_name_repetitions,
+    clippy::inline_always,
+    clippy::too_many_lines
+)]
 /*
     ALICE-Settlement
     Copyright (C) 2026 Moroya Sakamoto
@@ -49,6 +61,8 @@
 //! ```
 
 pub mod clearing;
+#[cfg(feature = "ffi")]
+pub mod ffi;
 pub mod journal;
 /// SPAN-style margin computation (initial, variation, stress).
 pub mod margin;
@@ -72,10 +86,10 @@ pub use waterfall::{
 /// FNV-1a hash (crate-internal shared utility).
 #[inline(always)]
 pub(crate) fn fnv1a(data: &[u8]) -> u64 {
-    let mut h: u64 = 0xcbf29ce484222325;
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for &b in data {
         h ^= b as u64;
-        h = h.wrapping_mul(0x100000001b3);
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
     }
     h
 }
