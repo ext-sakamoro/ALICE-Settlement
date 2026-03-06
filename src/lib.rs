@@ -61,6 +61,7 @@
 //! ```
 
 pub mod clearing;
+pub mod collateral;
 #[cfg(feature = "ffi")]
 pub mod ffi;
 pub mod journal;
@@ -74,6 +75,10 @@ pub mod trade;
 pub mod waterfall;
 
 pub use clearing::{ClearingAccount, ClearingError, ClearingHouse, ClearingResult};
+pub use collateral::{
+    check_concentration, CollateralAccount, CollateralHolding, CollateralType, ConcentrationBreach,
+    ConcentrationLimits, HaircutConfig,
+};
 pub use journal::{JournalEntry, JournalEvent, SettlementJournal};
 pub use margin::{MarginConfig, MarginEngine, MarginRequirement};
 pub use netting::{multilateral_net, NetObligation, NettingEngine};
