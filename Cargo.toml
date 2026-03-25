@@ -2,7 +2,7 @@
 name = "alice-settlement"
 version = "0.1.0"
 edition = "2021"
-authors = ["Moroya Sakamoto"]
+authors = ["Moroya Sakamoto <sakamoro@alicelaw.net>"]
 description = "Post-trade settlement, netting, and clearing engine"
 license = "AGPL-3.0-only"
 publish = false
