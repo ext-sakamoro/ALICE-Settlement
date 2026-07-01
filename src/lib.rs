@@ -8,7 +8,20 @@
     clippy::many_single_char_names,
     clippy::module_name_repetitions,
     clippy::inline_always,
-    clippy::too_many_lines
+    clippy::too_many_lines,
+    clippy::doc_markdown,
+    clippy::missing_const_for_fn,
+    clippy::too_long_first_doc_paragraph,
+    clippy::missing_panics_doc,
+    clippy::manual_let_else,
+    clippy::bool_to_int_with_if,
+    clippy::borrow_as_ptr,
+    clippy::option_if_let_else,
+    clippy::ptr_as_ptr,
+    clippy::ref_as_ptr,
+    clippy::match_same_arms,
+    clippy::redundant_clone,
+    clippy::pub_underscore_fields
 )]
 /*
     ALICE-Settlement
@@ -62,6 +75,8 @@
 
 pub mod clearing;
 pub mod collateral;
+pub mod merkle_trail;
+pub use merkle_trail::{SettlementEvent, SettlementEventKind, SettlementTrail};
 #[cfg(feature = "ffi")]
 pub mod ffi;
 pub mod journal;
