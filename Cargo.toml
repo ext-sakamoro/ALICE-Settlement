@@ -4,7 +4,7 @@ version = "0.2.0"
 edition = "2021"
 authors = ["Moroya Sakamoto <sakamoro@alicelaw.net>"]
 description = "Post-trade settlement, netting, and clearing engine"
-license = "AGPL-3.0-only"
+license = "AGPL-3.0-only OR LicenseRef-Commercial"
 publish = false
 
 [lib]
