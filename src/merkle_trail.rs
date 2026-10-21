@@ -9,7 +9,7 @@
 //! Replaces the crate's earlier `FNV-1a` hash which is unsuitable for
 //! financial audit under `EMIR` / `MiFID-II` reporting rules.
 
-use alice_blockchain::{hash_data, Hash, KeyPair, MerkleTree, PublicKey, Signature};
+use alice_sign::{hash_data, Hash, KeyPair, MerkleTree, PublicKey, Signature};
 
 // ---------------------------------------------------------------------------
 // SettlementEvent

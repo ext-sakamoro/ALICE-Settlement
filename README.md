@@ -11,7 +11,7 @@ Post-trade settlement, netting, and clearing engine for the ALICE financial infr
 - Append-only settlement journal with monotonic sequence numbers
 - Deterministic journal replay and cross-log verification
 - FNV-1a content hashing throughout for audit integrity
-- Dependency on `alice-ledger` only; no external crates
+- Depends on `alice-sign` only (Ed25519, SHA-256 and the Merkle tree of `merkle_trail`)
 
 ## Module Overview
 
