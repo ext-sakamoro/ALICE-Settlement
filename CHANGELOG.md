@@ -12,7 +12,7 @@ All notable changes to ALICE-Settlement will be documented in this file.
 - CI: `Test (public siblings)` job `cargo test --all-features` を走らせ、cargo の失敗、失敗した試験、通った試験が 167 件未満のどれでも失敗 `ci/**` の push でも走る `scripts/preflight.sh` は生成し直して同じ step を持つ
 
 ### Changed
-- Licence: `AGPL-3.0-only OR LicenseRef-Commercial` → `LicenseRef-Proprietary`
+- Licence: `AGPL-3.0-only` → `LicenseRef-Proprietary`
 
 - `alice-sign` の git rev を 8a1b00d に上げた (HMAC-SHA256 の追加のみ、使っている API と byte 列は同じ)
 - `merkle_trail` の Ed25519 / SHA-256 (`hash_data` / `Hash`) / `MerkleTree` を `alice-sign` (MIT OR Apache-2.0、公開、git rev 5420e71) から取るようにした 型と鍵・署名・hash・Merkle root の byte 列は同じ (これまでの依存先も同じ型を `alice-sign` から再公開していた) どこからも使っていなかった `alice-ledger` の path 依存を外した 公開の source だけで build できる
