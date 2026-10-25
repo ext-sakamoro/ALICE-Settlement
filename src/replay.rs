@@ -1,5 +1,5 @@
 // ALICE-Settlement — Deterministic journal replay and verification
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Copyright (C) 2026 Moroya Sakamoto
 
 use crate::fnv1a;

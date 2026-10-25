@@ -35,8 +35,7 @@ allow = [
     "MPL-2.0",
 ]
 
-# alice-settlement is offered as AGPL-3.0-only OR LicenseRef-Commercial; it is published under the
-# AGPL-3.0-only side
+# alice-settlement itself is LicenseRef-Proprietary (outside the allow-list), so it takes a self exception
 [[licenses.exceptions]]
 name = "alice-settlement"
 allow = ["LicenseRef-Proprietary"]

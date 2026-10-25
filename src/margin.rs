@@ -1,5 +1,5 @@
 // ALICE-Settlement — SPAN-style margin computation
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Copyright (C) 2026 Moroya Sakamoto
 
 use crate::fnv1a;

@@ -1,5 +1,5 @@
 // ALICE-Settlement — Unity C# Bindings
-// License: AGPL-3.0-only
+// License: LicenseRef-Proprietary
 // Author: Moroya Sakamoto
 //
 // 22 DllImport + IDisposable RAII wrappers

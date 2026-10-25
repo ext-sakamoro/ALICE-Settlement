@@ -1,5 +1,5 @@
 // ALICE-Settlement — Collateral management with haircuts and concentration limits
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Copyright (C) 2026 Moroya Sakamoto
 
 use crate::fnv1a;
